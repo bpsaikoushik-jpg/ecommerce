@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Assessment — CareerPath</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="navbar"><div class="logo">CareerPath — Assessment</div></header>
+    <div class="card" style="margin-top:18px">
+      <h3 class="h2">Take Assessment</h3>
+      <div id="quizWrap"></div>
+    </div>
+  </div>
+
+<script>
+  // loads questions and show; on submit stores result to currently logged-in student (if any)
+  const qs = JSON.parse(localStorage.getItem('questions')||'[]');
+  const wrap = document.getElementById('quizWrap');
+  if(!qs.length){ wrap.innerHTML='<p>No questions available.</p>'; }
+  else {
+    const form = document.createElement('form');
+    qs.forEach(q=>{
+      const card = document.createElement('div'); card.className='qcard';
+      card.innerHTML = `<p><strong>${q.id}.</strong> ${q.text}</p>`;
+      q.options.forEach((opt,oi)=> card.innerHTML += `<label style="display:block;margin:6px 0"><input type="radio" name="q_${q.id}" value="${q.category[oi]}"> ${opt}</label>`);
+      form.appendChild(card);
+    });
+    const sub = document.createElement('button'); sub.className='btn btn-primary'; sub.type='submit'; sub.textContent='Submit';
+    form.appendChild(sub); wrap.appendChild(form);
+
+    form.addEventListener('submit', e=>{
+      e.preventDefault();
+      const fd = new FormData(form);
+      const cnt = {};
+      let total=0;
+      for(const [k,v] of fd.entries()){ cnt[v]=(cnt[v]||0)+1; total++; }
+      let top='General', topScore=-1; ['tech','creative','business','social'].forEach(d=>{ const s = Math.round((cnt[d]||0)/total*100); if(s>topScore){topScore=s; top=d.charAt(0).toUpperCase()+d.slice(1)} });
+      const result = {top: top, score: topScore, detail: cnt, date: new Date().toISOString()};
+      const username = sessionStorage.getItem('user') || prompt('Enter username to store result:');
+      if(!username){ alert('No username'); return; }
+      const studs = JSON.parse(localStorage.getItem('students')||'[]'); const idx = studs.findIndex(s=>s.username===username);
+      if(idx>=0){ studs[idx].results = studs[idx].results||[]; studs[idx].results.unshift(result); localStorage.setItem('students', JSON.stringify(studs)); }
+      else { studs.push({username:username,password:'',name:username,results:[result]}); localStorage.setItem('students', JSON.stringify(studs)); }
+      alert('Saved result for '+username);
+      window.location.href='student_dashboard.html';
+    });
+  }
+</script>
+</body>
+</html>

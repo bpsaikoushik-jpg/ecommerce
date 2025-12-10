@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>CareerPath — Login</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="navbar">
+      <div class="logo">CareerPath</div>
+      <div class="nav-links">
+      </div>
+    </header>
+
+    <div style="max-width:920px;margin:20px auto;display:grid;grid-template-columns:1fr 420px;gap:18px">
+      <div class="card">
+        <h3 class="h2">Welcome to CareerPath — Neon Admin & Student Portal</h3>
+        <p class="p-muted">Use the demo credentials or add new users in your browser's localStorage. This is a front-end demo (no server)</p>
+        <ul class="p-muted">
+          <li><strong>Admin demo:</strong> <span class="badge">admin / admin</span></li>
+          <li><strong>Student demo:</strong> <span class="badge">student / student</span></li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3 class="h2">Login</h3>
+        <div class="form-row">
+          <label>Account Type</label>
+          <select id="role">
+            <option value="student">Student</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Username</label>
+          <input id="username" type="text" placeholder="username">
+        </div>
+        <div class="form-row">
+          <label>Password</label>
+          <input id="password" type="password" placeholder="password">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+          <button class="btn btn-primary" id="loginBtn">Sign In</button>
+          <button class="btn btn-ghost" id="demoFill">Fill Demo</button>
+        </div>
+        <p class="p-muted" style="margin-top:12px">New? Click <a href="#" id="createDemo" style="color:var(--neon-cyan)">Create Demo Student</a> to pre-populate a sample student.</p>
+      </div>
+    </div>
+
+    <footer class="footer">© 2025 CareerPath — Neon Cyberpunk Theme</footer>
+  </div>
+
+<script>
+  // small demo auth (client-side only)
+  document.getElementById('demoFill').addEventListener('click', () => {
+    const role = document.getElementById('role').value;
+    if(role==='admin'){ document.getElementById('username').value='admin'; document.getElementById('password').value='admin'; }
+    else { document.getElementById('username').value='student'; document.getElementById('password').value='student'; }
+  });
+
+  document.getElementById('createDemo').addEventListener('click', (e)=>{
+    e.preventDefault();
+    // create demo student in localStorage
+    const students = JSON.parse(localStorage.getItem('students')||'[]');
+    if(!students.find(s=>s.username==='student')){
+      students.push({username:'student',password:'student',name:'Demo Student',email:'demo@student.com',results:[]});
+      localStorage.setItem('students', JSON.stringify(students));
+      alert('Demo student created. Use student / student to login.');
+    } else alert('Demo student already exists.');
+  });
+
+  document.getElementById('loginBtn').addEventListener('click', ()=>{
+    const role = document.getElementById('role').value;
+    const u = document.getElementById('username').value.trim();
+    const p = document.getElementById('password').value.trim();
+    if(!u||!p){ alert('Please enter username & password'); return; }
+
+    if(role==='admin'){
+      if(u==='admin' && p==='admin'){
+        sessionStorage.setItem('role','admin'); sessionStorage.setItem('user','admin');
+        window.location.href='admin_dashboard.html';
+      } else {
+        alert('Invalid admin credentials. Demo: admin/admin');
+      }
+    } else {
+      // student auth against localStorage students array
+      const students = JSON.parse(localStorage.getItem('students')||'[]');
+      const found = students.find(s=>s.username===u && s.password===p);
+      if(found){
+        sessionStorage.setItem('role','student'); sessionStorage.setItem('user',u);
+        window.location.href='student_dashboard.html';
+      } else {
+        alert('Student not found. Create demo student or register via admin.');
+      }
+    }
+  });
+
+  // bootstrap sample questions if none exist
+  (function seed(){
+    if(!localStorage.getItem('questions')){
+      const q = [
+        {id:1,text:"I enjoy analyzing data and solving logical problems.",options:['Agree','Neutral','Disagree'],category:['tech','neutral','business']},
+        {id:2,text:"I love designing, drawing, or creating visuals.",options:['Agree','Neutral','Disagree'],category:['creative','neutral','tech']},
+        {id:3,text:"I like organizing and leading teams.",options:['Agree','Neutral','Disagree'],category:['business','neutral','social']}
+      ];
+      localStorage.setItem('questions', JSON.stringify(q));
+    }
+    if(!localStorage.getItem('thresholds')){
+      // minimal eligibility defaults (score percentage per domain)
+      localStorage.setItem('thresholds', JSON.stringify({tech:50,creative:40,business:40,social:40}));
+    }
+    if(!localStorage.getItem('students')){
+      localStorage.setItem('students', JSON.stringify([
+        {username:'student',password:'student',name:'Demo Student',email:'demo@student.com',results:[]}
+      ]));
+    }
+  })();
+</script>
+</body>
+</html>

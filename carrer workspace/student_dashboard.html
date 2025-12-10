@@ -1,0 +1,159 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Student — CareerPath</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="navbar">
+      <div class="logo">CareerPath — Student</div>
+      <div class="nav-links">
+        <a href="login.html" id="logout">Logout</a>
+      </div>
+    </header>
+
+    <div class="grid-2 container" style="margin-top:20px">
+      <aside class="side card">
+        <div class="avatar">
+          <img id="stuAvatar" src="https://avatars.dicebear.com/api/identicon/student.svg" alt="student">
+          <div>
+            <div id="stuName" class="username">Student</div>
+            <div id="stuEmail" class="meta">student@example.com</div>
+          </div>
+        </div>
+
+        <div style="margin-top:8px">
+          <button class="btn btn-primary" id="takeTest">Take Assessment</button>
+          <button class="btn btn-ghost" id="viewResults">My Results</button>
+        </div>
+
+        <div style="margin-top:14px">
+          <h4 class="h2">Quick Info</h4>
+          <div id="recentBadge"></div>
+        </div>
+      </aside>
+
+      <main>
+        <div class="card" id="mainArea">
+          <h3 class="h2">Profile & Assessment</h3>
+          <p class="p-muted">Use the buttons to take the test or view your results. Results and eligibility are stored locally in your browser.</p>
+
+          <div id="resultsPanel" style="display:none">
+            <h4>Your Results</h4>
+            <table class="table" id="myResultsTbl">
+              <thead><tr><th>Top Domain</th><th>Score</th><th>Date</th><th>Eligibility</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div id="assessPanel" style="display:none"></div>
+        </div>
+      </main>
+    </div>
+
+    <footer class="footer">Student Panel — CareerPath</footer>
+  </div>
+
+<script>
+  // protect route
+  if(sessionStorage.getItem('role')!=='student'){ alert('Not logged in as student'); window.location='login.html'; }
+
+  const user = sessionStorage.getItem('user');
+  const students = JSON.parse(localStorage.getItem('students')||'[]');
+  const me = students.find(s=>s.username===user) || {username:user,name:user,email:'',results:[]};
+  document.getElementById('stuName').textContent = me.name || me.username;
+  document.getElementById('stuEmail').textContent = me.email || '—';
+
+  document.getElementById('logout').addEventListener('click', ()=> sessionStorage.clear());
+
+  document.getElementById('takeTest').addEventListener('click', showAssessment);
+  document.getElementById('viewResults').addEventListener('click', showResults);
+
+  function showResults(){
+    document.getElementById('assessPanel').style.display='none';
+    const panel = document.getElementById('resultsPanel'); panel.style.display='block';
+    const tbody = document.querySelector('#myResultsTbl tbody'); tbody.innerHTML='';
+    const studs = JSON.parse(localStorage.getItem('students')||'[]');
+    const userObj = studs.find(s=>s.username===user);
+    (userObj.results||[]).forEach(r=>{
+      const tr = document.createElement('tr');
+      // eligibility note is computed below
+      const thresholds = JSON.parse(localStorage.getItem('thresholds')||'{}');
+      const eligible = (r.score >= (thresholds[r.top.toLowerCase()]||0)) ? 'Eligible' : 'Not Eligible';
+      tr.innerHTML = `<td>${r.top}</td><td>${r.score}</td><td>${new Date(r.date).toLocaleString()}</td><td>${eligible}</td>`;
+      tbody.appendChild(tr);
+    });
+    if(!(userObj.results||[]).length){ tbody.innerHTML=`<tr><td colspan="4">No results yet — take the assessment.</td></tr>`; }
+  }
+
+  function showAssessment(){
+    document.getElementById('resultsPanel').style.display='none';
+    const panel = document.getElementById('assessPanel'); panel.style.display='block';
+    panel.innerHTML = '<h4>Assessment</h4>';
+    const qs = JSON.parse(localStorage.getItem('questions')||'[]');
+    if(qs.length===0){ panel.innerHTML += '<p>No questions available. Contact admin.</p>'; return; }
+    const form = document.createElement('form'); form.id='quizForm';
+    qs.forEach((q, idx)=>{
+      const card = document.createElement('div'); card.className='qcard';
+      card.innerHTML = `<p><strong>${idx+1}.</strong> ${q.text}</p>`;
+      q.options.forEach((opt, oi)=>{
+        const val = q.category[oi];
+        const id = `q${q.id}_${oi}`;
+        card.innerHTML += `<label style="display:block;margin:6px 0"><input type="radio" name="q_${q.id}" value="${val}" required> ${opt}</label>`;
+      });
+      form.appendChild(card);
+    });
+    const submit = document.createElement('button'); submit.className='btn btn-primary'; submit.textContent='Submit Assessment';
+    submit.type='submit';
+    form.appendChild(submit);
+    panel.appendChild(form);
+
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const formData = new FormData(form);
+      // compute scores: each category counts +1 per selected answer
+      const scoreCount = {};
+      formData.forEach((v,k)=>{
+        scoreCount[v] = (scoreCount[v]||0)+1;
+      });
+      // determine percentage and top domain
+      const total = Object.keys(scoreCount).reduce((a,b)=>a+scoreCount[b],0);
+      // compute percentages per known domain set
+      const domainScores = {};
+      ['tech','creative','business','social','neutral'].forEach(d=> domainScores[d] = Math.round((scoreCount[d]||0)/total*100));
+      // choose top (exclude neutral)
+      let top = 'General';
+      let topScore = -1;
+      for(const d of ['tech','creative','business','social']){
+        if(domainScores[d] > topScore){ topScore = domainScores[d]; top = d.charAt(0).toUpperCase()+d.slice(1); }
+      }
+      const percent = topScore; // percent of answers mapping to top domain
+      const result = {top: top, score: percent, detail: domainScores, date: new Date().toISOString()};
+      // save into student's record
+      const studs = JSON.parse(localStorage.getItem('students')||'[]');
+      const meIndex = studs.findIndex(s=>s.username===user);
+      if(meIndex>=0){
+        studs[meIndex].results = studs[meIndex].results||[];
+        studs[meIndex].results.unshift(result);
+        localStorage.setItem('students', JSON.stringify(studs));
+      } else {
+        // if not found, create
+        studs.push({username:user,password:'',name:user,email:'',results:[result]});
+        localStorage.setItem('students', JSON.stringify(studs));
+      }
+      alert('Assessment submitted — redirecting to Results view.');
+      showResults();
+    });
+  }
+
+  // show most recent badge
+  const stud = JSON.parse(localStorage.getItem('students')||'[]').find(s=>s.username===user);
+  if(stud && stud.results && stud.results.length){
+    document.getElementById('recentBadge').innerHTML = `<div class="p-muted">Latest: <span class="badge">${stud.results[0].top} — ${stud.results[0].score}%</span></div>`;
+  } else document.getElementById('recentBadge').innerHTML = `<div class="p-muted">No results yet</div>`;
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Result — CareerPath</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="navbar"><div class="logo">CareerPath — Result</div></header>
+    <div class="card" style="margin-top:18px">
+      <div id="resultWrap"></div>
+    </div>
+    <footer class="footer">© 2025 CareerPath</footer>
+  </div>
+
+<script>
+  const user = sessionStorage.getItem('user');
+  const studs = JSON.parse(localStorage.getItem('students')||'[]');
+  const me = studs.find(s=>s.username===user);
+  const out = document.getElementById('resultWrap');
+  if(!me || !(me.results||[]).length){ out.innerHTML = '<p>No result found. Take the assessment first.</p>'; }
+  else {
+    const r = me.results[0];
+    const thresholds = JSON.parse(localStorage.getItem('thresholds')||'{}');
+    const eligible = r.score >= (thresholds[r.top.toLowerCase()]||0);
+    out.innerHTML = `<h3 class="h2">Recommended Path: <span class="badge">${r.top}</span></h3>
+      <p class="p-muted">Score: <strong>${r.score}%</strong> • ${eligible ? '<span style="color:#7bffb0">Eligible</span>' : '<span style="color:#ff7b7b">Not eligible yet</span>'}</p>
+      <ul>
+        <li>Top fields: ${r.top==='Tech' ? 'Web Development, Data Science, AI' : r.top==='Creative' ? 'Graphic Design, UI/UX, Motion Design' : r.top==='Business' ? 'Product Management, Operations, Entrepreneurship' : 'Social Work, HR, Community Engagement'}</li>
+        <li>Suggested learning: ${r.top==='Tech' ? 'C++, Python, Algorithms' : r.top==='Creative' ? 'Adobe Suite, Figma, Illustration' : r.top==='Business' ? 'Spreadsheet, Communication, Business fundamentals' : 'Communication, Counseling basics'}</li>
+      </ul>
+      <a href="student_dashboard.html" class="btn btn-primary">Back to Dashboard</a>`;
+  }
+</script>
+</body>
+</html>
+
